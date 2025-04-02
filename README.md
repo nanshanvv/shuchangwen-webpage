@@ -1,64 +1,88 @@
-# 🍥Fuwari
+# 🌸 Shuchang Wen's Blog · Powered by Astro + Fuwari
 
-A static blog template built with [Astro](https://astro.build).
+Welcome to my personal blog site! This website is built using the [Fuwari](https://github.com/saicaca/fuwari) template and [Astro](https://astro.build), and is deployed on [GitHub Pages](https://pages.github.com/).
 
-[**🖥️ Live Demo (Vercel)**](https://fuwari.vercel.app)&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;
-[**📦 Old Hexo Version**](https://github.com/saicaca/hexo-theme-vivia)&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;
-[**🌏 中文**](https://github.com/saicaca/fuwari/blob/main/README.zh-CN.md)&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;
-[**🌏 日本語**](https://github.com/saicaca/fuwari/blob/main/README.ja-JP.md)&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;
-[**🌏 한국어**](https://github.com/saicaca/fuwari/blob/main/README.ko.md)&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;
-[**🌏 Español**](https://github.com/saicaca/fuwari/blob/main/README.es.md)&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;
-[**🌏 ไทย**](https://github.com/saicaca/fuwari/blob/main/README.th.md)
+👉 Live Site: [https://nanshanvv.github.io/shuchangwen-webpage](https://nanshanvv.github.io/shuchangwen-webpage)
 
-> README version: `2024-09-10`
-
-![Preview Image](https://raw.githubusercontent.com/saicaca/resource/main/fuwari/home.png)
+---
 
 ## ✨ Features
 
-- [x] Built with [Astro](https://astro.build) and [Tailwind CSS](https://tailwindcss.com)
-- [x] Smooth animations and page transitions
-- [x] Light / dark mode
-- [x] Customizable theme colors & banner
-- [x] Responsive design
-- [ ] Comments
-- [x] Search
-- [ ] TOC
+- 🚀 Built with [Astro](https://astro.build/) & [Tailwind CSS](https://tailwindcss.com/)
+- 💡 Light / Dark mode
+- 🌈 Custom theme colors & banner
+- 📱 Responsive design
+- 💬 Comment system
+- 🔍 Search & Table of Contents
+- 🌐 Supports multiple languages (中文 / English / 日本語 / etc.)
 
-## 🚀 How to Use
-
-1. [Generate a new repository](https://github.com/saicaca/fuwari/generate) from this template or fork this repository.
-2. To edit your blog locally, clone your repository, run `pnpm install` AND `pnpm add sharp` to install dependencies.
-   - Install [pnpm](https://pnpm.io) `npm install -g pnpm` if you haven't.
-3. Edit the config file `src/config.ts` to customize your blog.
-4. Run `pnpm new-post <filename>` to create a new post and edit it in `src/content/posts/`.
-5. Deploy your blog to Vercel, Netlify, GitHub Pages, etc. following [the guides](https://docs.astro.build/en/guides/deploy/). You need to edit the site configuration in `astro.config.mjs` before deployment.
-
-## ⚙️ Frontmatter of Posts
-
-```yaml
 ---
-title: My First Blog Post
-published: 2023-09-09
-description: This is the first post of my new Astro blog.
-image: ./cover.jpg
-tags: [Foo, Bar]
-category: Front-end
+
+## 📦 Local Development
+
+### 1. Install dependencies
+
+```bash
+pnpm install
+pnpm add sharp
+```
+
+### 2. Start development server
+
+```bash
+pnpm dev
+```
+
+Visit `http://localhost:4321` in your browser to view the site locally.
+
+---
+
+## 📝 Create a New Blog Post
+
+```bash
+pnpm new-post your-post-name
+```
+
+This will create a new file at `src/content/posts/your-post-name.md`.  
+Edit the Markdown file and update the frontmatter:
+
+```md
+---
+title: "My First Post"
+published: 2025-04-02
+description: "This is an example post."
+tags: [Blog, Astro]
+category: Learning
 draft: false
-lang: jp      # Set only if the post's language differs from the site's language in `config.ts`
+lang: zh
 ---
 ```
 
-## 🧞 Commands
+---
 
-All commands are run from the root of the project, from a terminal:
+## 🚀 Deployment (via GitHub Actions)
 
-| Command                             | Action                                           |
-|:------------------------------------|:-------------------------------------------------|
-| `pnpm install` AND `pnpm add sharp` | Installs dependencies                            |
-| `pnpm dev`                          | Starts local dev server at `localhost:4321`      |
-| `pnpm build`                        | Build your production site to `./dist/`          |
-| `pnpm preview`                      | Preview your build locally, before deploying     |
-| `pnpm new-post <filename>`          | Create a new post                                |
-| `pnpm astro ...`                    | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro --help`                 | Get help using the Astro CLI                     |
+This site is automatically deployed to GitHub Pages using [withastro/action](https://github.com/withastro/action).
+
+### Astro Configuration
+
+In `astro.config.mjs`, set:
+
+```js
+export default defineConfig({
+  site: 'https://nanshanvv.github.io/shuchangwen-webpage',
+  base: '/shuchangwen-webpage/',
+});
+```
+
+### GitHub Pages Settings
+
+- Source: **GitHub Actions**
+- Make sure the `pnpm-lock.yaml` file is committed to the repository
+- Deploy workflow is defined in `.github/workflows/deploy.yml`
+
+---
+
+## 📚 License
+
+This project is based on the [Fuwari Template by @saicaca](https://github.com/saicaca/fuwari), released under the MIT license.
