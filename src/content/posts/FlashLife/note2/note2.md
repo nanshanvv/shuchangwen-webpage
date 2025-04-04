@@ -1,7 +1,7 @@
 ---
-title: Cache
+title: Redis——Cache
 published: 2025-04-03
-description: About Cache
+description: About how to use redis to achieve Cache function
 tags: [FullStack, FlashLife]
 category: FlashLife (Java_Project)
 draft: false
@@ -124,7 +124,7 @@ Cache Aside Pattern（常用）：
 
 
 
-## 缓存穿透
+## 缓存穿透（Cache Penetration）
 
 ![5](images/5.png)
 
@@ -133,3 +133,226 @@ Cache Aside Pattern（常用）：
 #### 1.缓存空对象
 
 #### 2.布隆过滤
+
+#### ![6](images/6.png)
+
+### 解决缓存穿透实现（缓存空值）
+
+![7](images/7.png)
+
+**源代码：**
+
+```java
+        //4. not exist => search the data from the database
+        Shop shop = getById(id);
+        //5. not exist => return error
+        if (shop == null) {
+            return Result.fail("shop not found");
+        }
+```
+
+**防止缓存穿透：**
+
+```java
+        //determine if the value is null or not(avoid the Cache Penetration)
+        if (shopJson != null) {
+            return Result.fail("Reject query shop");
+        }
+        //4. not exist => search the data from the database
+        Shop shop = getById(id);
+        //5. not exist => return error
+        if (shop == null) {
+            stringRedisTemplate.opsForValue().set(CACHE_SHOP_KEY + id,"",CACHE_NULL_TTL, TimeUnit.MINUTES);
+            return Result.fail("shop not found");
+        }
+```
+
+
+
+## 缓存雪崩（**Cache Avalanche**）
+
+![8](images/8.png)
+
+## 缓存击穿（Cache Breakdown）
+
+![9](images/9.png)
+
+### 解决：
+
+#### 互斥锁
+
+#### ![10](images/10.png)
+
+#### 逻辑过期
+
+不加TTL而是加一个expire的字段（**实际永不过期了**）
+
+![11](images/11.png)
+
+### 方案优缺点
+
+![12](images/12.png)
+
+### 解决缓存击穿实现（互斥锁）
+
+![13](images/13.png)
+
+*Question：怎么实现自定义的锁？*
+
+*Answer：用setnx*
+
+#### setnx用法 
+
+##### ✅ 一句话解释：
+
+> **`SETNX` 是 Redis 提供的“如果 key 不存在才设置”命令**，常用于**加锁**场景。
+
+##### `SETNX` 是 `SET if Not eXists` 的缩写。
+
+------
+
+##### ✅ 最基本用法：
+
+##### 语法：
+
+```bash
+SETNX lock_key "locked"
+```
+
+- 如果 `lock_key` 不存在，则设置成功，返回 `1`（即：**加锁成功**）
+- 如果已经存在，返回 `0`（**加锁失败，别人已经持有锁**）
+
+比如：
+
+```yara
+//某个人给名为lock的key赋值1
+setnx lock 1
+//返回true
+return : 1
+//突然又来一个人给lock赋值2
+setnx lock 2
+//返回false
+return : 0
+```
+
+:::important
+
+✅ **为什么 `SETNX` 可以作为互斥锁？**
+
+:::
+
+我们来从**互斥锁的本质出发**，再结合 Redis 的行为机制，通俗+专业地解释 👇
+
+------
+
+##### ✅ 一、什么是互斥锁？
+
+先搞清楚概念：
+
+> **互斥锁（Mutex）** 的目的是：**同一时间，只允许一个线程/进程执行关键代码区。**
+
+如果锁已经被别人拿走了，别人就得“等”或者“退出”。
+
+------
+
+##### ✅ 二、SETNX 的特性
+
+Redis 的 `SETNX`（或 `SET key value NX`）有个非常关键的特性：
+
+> 只有 **key 不存在时才能设置成功**，设置成功返回 1，否则返回 0。
+
+这就意味着：
+
+🟢 第一个线程成功 set 进去，相当于**获得了锁**
+ 🔴 后续线程 set 失败，相当于**被拒之门外**
+
+------
+
+##### ✅ 三、用一张图解释：
+
+假设多个线程并发执行：
+
+| 时间点 | 线程A执行               | 线程B执行         | Redis中的key状态             |
+| ------ | ----------------------- | ----------------- | ---------------------------- |
+| T1     | A 尝试 SETNX lock       | -                 | 成功，返回1，创建了 key=lock |
+| T2     | -                       | B 尝试 SETNX lock | 失败，返回0，说明“被锁住”了  |
+| T3     | A 处理业务中...         | B 等待/失败/重试  | key 仍存在                   |
+| T4     | A 执行完成，DEL lock    | -                 | 锁释放了                     |
+| T5     | B 重试，SETNX lock 成功 | -                 | B 成功加锁                   |
+
+🎯 这个流程就完全等价于“加锁 → 执行任务 → 解锁”的互斥操作。
+
+#### 代码实现
+
+```java
+    @Override
+    public Result queryById(Long id) {
+        //2.互斥锁解决缓存击穿
+        Shop shop = queryWithMutex(id);
+        if (shop == null) {
+            return Result.fail("This shot is not found");
+        }
+        return Result.ok(shop);
+    }
+
+    public Shop queryWithMutex(Long id) {
+        //1. search the shop data from redis
+        String shopJson = stringRedisTemplate.opsForValue().get(CACHE_SHOP_KEY + id);
+        //2. exist or not
+        if (StrUtil.isNotBlank(shopJson)) {
+            //3. exist => return data
+            return JSONUtil.toBean(shopJson, Shop.class);
+        }
+        //determine if the value is null or not(avoid the Cache Penetration)
+        if (shopJson != null) {
+            return null;
+        }
+        //Implement the Mutex function(get lock and del lock)
+        // Get the lock
+        String lockKey = LOCK_SHOP_KEY + id;
+        Shop shop = null;
+        try {
+            boolean isLock = tryLock(lockKey);
+            // Determine if getting lock successfully
+            //can not get lock => wait
+            if (!isLock) {
+                Thread.sleep(50);
+                return queryWithMutex(id);
+            }
+            // get lock => do the action: 1.get data from dataset 2.transmission data to Redis 3. return data
+            //4. not exist => search the data from the database
+            shop = getById(id);
+            //5. not exist => return error
+            if (shop == null) {
+                stringRedisTemplate.opsForValue().set(CACHE_SHOP_KEY + id,"",CACHE_NULL_TTL, TimeUnit.MINUTES);
+                return null;
+            }
+            //6. exist => store in the redis
+            stringRedisTemplate.opsForValue().set(CACHE_SHOP_KEY + id, JSONUtil.toJsonStr(shop),CACHE_SHOP_TTL, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }finally {
+            // release lock
+            unlock(lockKey);
+        }
+
+        return shop;
+    }
+
+    private boolean tryLock(String key) {
+        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", LOCK_SHOP_TTL, TimeUnit.MINUTES);
+        return BooleanUtil.isTrue(flag);
+    }
+
+    private boolean unlock(String key) {
+        Boolean flag = stringRedisTemplate.delete(key);
+        return BooleanUtil.isTrue(flag);
+    }
+
+```
+
+:::tip
+
+用**JMeter**做缓存击穿模拟或者压力测试
+
+:::
