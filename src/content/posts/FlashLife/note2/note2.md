@@ -356,3 +356,104 @@ Redis 的 `SETNX`（或 `SET key value NX`）有个非常关键的特性：
 用**JMeter**做缓存击穿模拟或者压力测试
 
 :::
+
+
+
+### 解决缓存击穿实现（逻辑过期）
+
+  ![14](images/14.png)
+
+#### 主要代码
+
+```java
+    @Override
+    public Result queryById(Long id) {
+        //1.缓存穿透
+        // Shop shop = queryWithPassThrough(id);
+        //互斥锁解决缓存击穿
+//        Shop shop = queryWithMutex(id);
+        //用逻辑过期解决缓存击穿
+        Shop shop = queryWithLogicalExpire(id);
+        if (shop == null) {
+            return Result.fail("This shot is not found");
+        }
+        return Result.ok(shop);
+    }    
+```
+
+```java
+	public Shop queryWithLogicalExpire(Long id) {
+        //1. search the shop data from redis
+        String shopJson = stringRedisTemplate.opsForValue().get(CACHE_SHOP_KEY + id);
+        //2. exist or not
+        if (StrUtil.isBlank(shopJson)) {
+            //3. not exist => return null
+            return null;
+        }
+        RedisData redisData = JSONUtil.toBean(shopJson, RedisData.class);
+        JSONObject data = (JSONObject) redisData.getData();
+        Shop shop = JSONUtil.toBean(data, Shop.class);
+        LocalDateTime expireTime = redisData.getExpireTime();
+        // judge if cache is expired
+        if (expireTime.isAfter(LocalDateTime.now())) {
+            // if not expired => return shop data
+            return shop;
+        }
+        // if expired => try to get lock
+        String lockKey = LOCK_SHOP_KEY + id;
+        if (tryLock(lockKey)){
+            //if : can get lock => create new thread(using thread pool) to do the update process
+            CACHE_REBUILD_EXECUTOR.submit(() -> {
+                //update cache
+                try {
+                    this.saveShop2Redis(id, 20L);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    unLock(lockKey);
+                }
+            });
+        }
+        //if: can not get lock => return shop data(old)
+
+        return shop;
+    }
+```
+
+```java
+    private boolean tryLock(String key) {
+        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", LOCK_SHOP_TTL, TimeUnit.MINUTES);
+        return BooleanUtil.isTrue(flag);
+    }
+
+    private boolean unLock(String key) {
+        Boolean flag = stringRedisTemplate.delete(key);
+        return BooleanUtil.isTrue(flag);
+    }
+```
+
+其中*saveShop2Redis*代码为
+
+```java
+    private void saveShop2Redis(Long id, Long expireSeconds) {
+        //1.查询店铺数据
+        Shop shop = getById(id);
+        //2.封装逻辑过期时间
+        RedisData redisData = new RedisData();
+        redisData.setData(shop);
+        redisData.setExpireTime(LocalDateTime.now().plusSeconds(expireSeconds));
+        //3.将RedisData类型的data写入Redis（无TTL，逻辑上有过期时间）
+        stringRedisTemplate.opsForValue().set(CACHE_SHOP_KEY + id, JSONUtil.toJsonStr(redisData));
+    }
+```
+
+**其中Redisdata是一个将Object对象（在这里是Shop类对象）以及expireTime属性组合起来的新class**
+
+```java
+@Data
+public class RedisData {
+    private LocalDateTime expireTime;
+    private Object data;
+}
+```
+
