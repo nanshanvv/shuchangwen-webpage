@@ -196,3 +196,72 @@ return 0
 ### 小结1
 
 ![7](img/7.png)
+
+## Redisson来实现分布式锁
+
+### 基于setnx的分布式锁的问题
+
+![8](img/8.png)
+
+### 在Redis基础上实现的分布式工具框架：Redisson 
+
+#### Redisson入门
+
+只需要配置好就行，底层的实现（比如我们之前实现的SimpleLock.tryLock和SimplyLock.unLock），Redisson都有实现好的function，不用我们管
+
+![10](img/10.png)
+
+![11](img/11.png)
+
+#### 代码中用法
+
+```java
+        Long userID = UserHolder.getUser().getId();
+        //分布式锁
+//      SimpleRedisLock lock = new SimpleRedisLock("order" + userID, stringRedisTemplate);
+        RLock lock = redissonClient.getLock("lock:order:" + userID);
+        boolean isLock = lock.tryLock();
+        if(!isLock){
+            //fail to get lock
+            return Result.fail("only one order per customer");
+        }
+        try {
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+            return proxy.createVoucherOrder(voucherId);
+        }finally {
+            lock.unlock();
+        }
+
+    }
+```
+
+与原来的SimpleRedisLock相比，我只是在配置好后，新建了一个RLock lock对象，下面的trylock我什么都没改，就可以直接用
+
+PS：记得注入Redission
+
+```java
+@Resource
+RedissionClient redissionClient;
+```
+
+#### 为什么Redission可以实现可重入
+
+ 对于我们实现的SimpleLock来说，如果嵌套进行申请锁，是不可行的
+
+*Example：*
+*Method1 ->获取锁->Method1执行Method2，Method2也需要获取锁->Method2尝试获取锁->失败*
+*原因：Method1和Method2在同一个线程，而我们对于**Value是用String存的***
+
+| KEY       | VALUE   |
+| --------- | ------- |
+| lock_name | Thread1 |
+
+**解决方法：我们想让VALUE能存线程标识以及锁的次数---->用Hash**
+
+ ![12](img/12.png)
+
+![13](img/13.png)
+
+***PS：Redisson底层都是用LUNA脚本实现的***
+
+ 
