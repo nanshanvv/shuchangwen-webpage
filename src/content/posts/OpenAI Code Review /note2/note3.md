@@ -1,7 +1,7 @@
 ---
-title: Write CodeReview Content to Log - OpenAI-Powered Code Review Tool
+title: DDD Architecture - OpenAI-Powered Code Review Tool
 published: 2025-04-24
-description: Implement the CodeReview feature, including knowledge related to Java deserialization.
+description: The Last Part
 tags: [CI&CD, CodeReview]
 category: OpenAI-Powered Code Review Tool
 draft: false

@@ -41,7 +41,7 @@ lang: zh
 ```java
    private static String codeReview(String diffCode) throws Exception {
 
-        String apiKeySecret = "你的API KEY";
+        String apiKeySecret = "你的APIKEY";
         String token = BearerTokenUtils.getToken(apiKeySecret);
 
         URL url = new URL("https://open.bigmodel.cn/api/paas/v4/chat/completions");
