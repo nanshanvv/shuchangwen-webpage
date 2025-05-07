@@ -51,9 +51,9 @@ export const navBarConfig: NavBarConfig = {
 }
 
 export const profileConfig: ProfileConfig = {
-  avatar: 'assets/images/avatar.jpeg',  // Relative to the /src directory. Relative to the /public directory if it starts with '/'
+  avatar: 'assets/images/avatar.jpg',  // Relative to the /src directory. Relative to the /public directory if it starts with '/'
   name: 'Shuchang Wen',
-  bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+  bio: 'Programs must be written for people to read, and only incidentally for machines to execute. — Harold Abelson',
   links: [
     {
       name: 'Twitter',
@@ -70,7 +70,7 @@ export const profileConfig: ProfileConfig = {
     {
       name: 'GitHub',
       icon: 'fa6-brands:github',
-      url: 'https://github.com/saicaca/fuwari',
+      url: 'https://github.com/nanshanvv',
     },
   ],
 }
